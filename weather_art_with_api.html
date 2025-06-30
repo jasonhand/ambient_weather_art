@@ -1,0 +1,1821 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Art Installation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #000;
+            overflow: hidden;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            transition: background 2s ease;
+        }
+
+        .container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: grid;
+            gap: 0;
+            padding: 0;
+            margin: 0;
+            z-index: 1;
+            background: radial-gradient(circle at center, 
+                rgba(255, 255, 255, 0.05) 0%, 
+                rgba(0, 0, 0, 0.8) 70%, 
+                rgba(0, 0, 0, 1) 100%);
+        }
+
+        .disc {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
+            cursor: pointer;
+            margin: 0;
+            padding: 0;
+        }
+
+        .disc-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            backface-visibility: hidden;
+            border: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .disc-front {
+            background: linear-gradient(45deg, #4a90e2, #7bb3f2);
+        }
+
+        .disc-back {
+            background: linear-gradient(45deg, #e24a4a, #f27b7b);
+            transform: rotateY(180deg);
+        }
+
+        .disc.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 12px;
+            color: white;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            z-index: 1000;
+            min-width: 280px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .control-section {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .control-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .section-title {
+            font-size: 14px;
+            color: #4a90e2;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: bold;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #ccc;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .control-group input, .control-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 14px;
+        }
+
+        .control-group input:focus, .control-group select:focus {
+            outline: none;
+            border-color: #4a90e2;
+            box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.3);
+        }
+
+        .api-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #666;
+        }
+
+        .status-indicator.connected {
+            background: #4CAF50;
+        }
+
+        .status-indicator.error {
+            background: #f44336;
+        }
+
+        .status-indicator.connecting {
+            background: #ff9800;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .weather-display {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 12px;
+            color: white;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            font-family: 'Courier New', monospace;
+            z-index: 1000;
+        }
+
+        .weather-item {
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            min-width: 200px;
+        }
+
+        .weather-label {
+            color: #aaa;
+            margin-right: 20px;
+        }
+
+        .weather-value {
+            color: #4a90e2;
+            font-weight: bold;
+        }
+
+        .weather-value.live {
+            color: #4CAF50;
+        }
+
+        .chaos-indicator {
+            position: fixed;
+            top: 50%;
+            left: 20px;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 200px;
+            background: linear-gradient(to top, #4a90e2, #e24a4a);
+            border-radius: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            overflow: hidden;
+            z-index: 1000;
+        }
+
+        .chaos-level {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            transition: height 0.5s ease;
+            border-radius: 0 0 8px 8px;
+        }
+
+        button {
+            background: linear-gradient(45deg, #4a90e2, #7bb3f2);
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+
+        button:hover {
+            background: linear-gradient(45deg, #3a7bc8, #6ba3d8);
+            transform: translateY(-2px);
+        }
+
+        button.secondary {
+            background: linear-gradient(45deg, #666, #888);
+        }
+
+        button.secondary:hover {
+            background: linear-gradient(45deg, #555, #777);
+        }
+
+        .toggle-controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            color: white;
+            padding: 10px 15px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+        }
+
+        .controls.hidden {
+            transform: translateX(100%);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .data-source-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 10px 15px;
+            border-radius: 8px;
+            color: white;
+            font-size: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            z-index: 1000;
+        }
+
+        .camera-preview {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            width: 160px;
+            height: 120px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: #000;
+            z-index: 1000;
+            display: none;
+            overflow: hidden;
+        }
+
+        .camera-preview.active {
+            display: block;
+        }
+
+        .camera-preview video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .camera-preview-label {
+            position: absolute;
+            top: -25px;
+            left: 0;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .error-message {
+            background: rgba(244, 67, 54, 0.2);
+            border: 1px solid rgba(244, 67, 54, 0.5);
+            color: #ffcdd2;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: repeat(auto-fit, minmax(7px, 1fr));
+                grid-template-rows: repeat(auto-fit, minmax(7px, 1fr));
+            }
+            
+            .disc {
+                width: 7px;
+                height: 7px;
+            }
+            
+            .controls {
+                top: 10px;
+                right: 10px;
+                padding: 15px;
+                min-width: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="container"></div>
+
+    <button class="toggle-controls" onclick="toggleControls()">⚙️ Controls</button>
+
+    <div class="controls" id="controls">
+        <!-- API Configuration Section -->
+        <div class="control-section">
+            <div class="section-title">🌐 Ambient Weather API</div>
+            
+            <div class="control-group">
+                <label>API Key</label>
+                <input type="password" id="apiKey" placeholder="Enter your API Key">
+            </div>
+            
+            <div class="control-group">
+                <label>Application Key</label>
+                <input type="password" id="appKey" placeholder="Enter your Application Key">
+            </div>
+            
+            <div class="control-group">
+                <label>MAC Address (Optional)</label>
+                <input type="text" id="macAddress" placeholder="Device MAC Address">
+            </div>
+            
+            <div class="control-group">
+                <label>
+                    <input type="checkbox" id="saveCredentials" checked>
+                    Save credentials locally
+                </label>
+            </div>
+            
+            <button onclick="connectToAWN()">Connect to Weather Station</button>
+            <button class="secondary" onclick="disconnectFromAWN()">Use Manual Mode</button>
+            <button class="secondary" onclick="clearSavedCredentials()" style="margin-top: 8px;">Clear Saved Credentials</button>
+            
+            <div class="api-status">
+                <div class="status-indicator" id="statusIndicator"></div>
+                <span id="statusText">Disconnected</span>
+            </div>
+            
+            <div id="credentialsStatus" style="font-size: 12px; margin-top: 8px; color: #ff9800;">⚠️ No saved credentials</div>
+            
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
+        </div>
+
+        <!-- Manual Controls Section -->
+        <div class="control-section">
+            <div class="section-title">🎛️ Manual Controls</div>
+            
+            <div class="control-group">
+                <label>Temperature (°F)</label>
+                <input type="number" id="temperature" value="72" min="-20" max="120">
+            </div>
+            
+            <div class="control-group">
+                <label>Humidity (%)</label>
+                <input type="number" id="humidity" value="45" min="0" max="100">
+            </div>
+            
+            <div class="control-group">
+                <label>Pressure (inHg)</label>
+                <input type="number" id="pressure" value="30.12" min="28" max="32" step="0.01">
+            </div>
+            
+            <div class="control-group">
+                <label>Wind Speed (mph)</label>
+                <input type="number" id="windSpeed" value="5" min="0" max="100">
+            </div>
+            
+            <div class="control-group">
+                <label>Solar Radiation (W/m²)</label>
+                <input type="number" id="solarRadiation" value="400" min="0" max="1200">
+            </div>
+            
+            <div class="control-group">
+                <label>Time of Day</label>
+                <select id="timeOfDay">
+                    <option value="auto">Auto (Current Time)</option>
+                    <option value="day">Day</option>
+                    <option value="night">Night</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Animation Controls Section -->
+        <div class="control-section">
+            <div class="section-title">⚡ Animation</div>
+            
+            <div class="control-group">
+                <label>Animation Speed</label>
+                <input type="range" id="animationSpeed" min="0.5" max="5" value="1" step="0.1">
+            </div>
+            
+            <button onclick="triggerRandomFlips()">Trigger Random Flips</button>
+            <button onclick="resetAllDiscs()">Reset All Discs</button>
+        </div>
+
+        <!-- Webcam Controls Section -->
+        <div class="control-section">
+            <div class="section-title">📷 Webcam Integration</div>
+            
+            <div class="control-group">
+                <label>
+                    <input type="checkbox" id="enableWebcam" checked>
+                    Enable Webcam Feed
+                </label>
+            </div>
+            
+            <div class="control-group">
+                <label>Camera Blend Mode</label>
+                <select id="cameraBlendMode">
+                    <option value="silhouette">Silhouette (Negative Space)</option>
+                    <option value="mosaic">Video Mosaic (Pure Camera)</option>
+                    <option value="overlay">Overlay on Weather Colors</option>
+                    <option value="replace">Replace Weather Colors</option>
+                    <option value="mix">Mix with Weather Colors</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label>Motion Sensitivity</label>
+                <input type="range" id="motionThreshold" min="10" max="100" value="30" step="5">
+            </div>
+            
+            <div class="control-group">
+                <label>Camera Opacity</label>
+                <input type="range" id="cameraOpacity" min="0.1" max="1" value="1" step="0.1">
+            </div>
+            
+            <div class="control-group">
+                <label>Camera Scale</label>
+                <input type="range" id="cameraScale" min="0.5" max="3" value="1" step="0.1">
+            </div>
+            
+            <button onclick="startCamera()">Start Camera</button>
+            <button class="secondary" onclick="stopCamera()">Stop Camera</button>
+            <button class="secondary" onclick="testCameraEffect()" style="margin-top: 8px;">Test Silhouette Effect</button>
+            <button class="secondary" onclick="checkCameraSupport()" style="margin-top: 8px;">Check Camera Support</button>
+            <button class="secondary" onclick="toggleSilhouettePreview()" style="margin-top: 8px;">Toggle Silhouette Preview</button>
+            
+            <div id="cameraStatus" style="font-size: 12px; margin-top: 8px; color: #ff9800;">📷 Camera not active</div>
+        </div>
+
+        <!-- Hide Controls Section -->
+        <div class="control-section">
+            <div class="section-title">🎛️ Display Controls</div>
+            
+            <button onclick="hideAllControls()" style="background: linear-gradient(45deg, #ff6b6b, #ee5a52); font-weight: bold; font-size: 14px;">
+                🎭 Hide All Controls
+            </button>
+            
+            <div style="font-size: 11px; color: #aaa; margin-top: 8px; text-align: center;">
+                Use the ⚙️ button in top-left to show controls again
+            </div>
+        </div>
+    </div>
+
+    <div class="weather-display">
+        <div class="weather-item">
+            <span class="weather-label">TEMP:</span>
+            <span class="weather-value" id="tempDisplay">72°F</span>
+        </div>
+        <div class="weather-item">
+            <span class="weather-label">HUMIDITY:</span>
+            <span class="weather-value" id="humidityDisplay">45%</span>
+        </div>
+        <div class="weather-item">
+            <span class="weather-label">PRESSURE:</span>
+            <span class="weather-value" id="pressureDisplay">30.12"</span>
+        </div>
+        <div class="weather-item">
+            <span class="weather-label">WIND:</span>
+            <span class="weather-value" id="windDisplay">5 mph</span>
+        </div>
+        <div class="weather-item">
+            <span class="weather-label">SOLAR:</span>
+            <span class="weather-value" id="solarDisplay">400 W/m²</span>
+        </div>
+        <div class="weather-item">
+            <span class="weather-label">CHAOS:</span>
+            <span class="weather-value" id="chaosDisplay">23%</span>
+        </div>
+        <div class="weather-item">
+            <span class="weather-label">UPDATED:</span>
+            <span class="weather-value" id="lastUpdate">Manual</span>
+        </div>
+    </div>
+
+    <div class="chaos-indicator">
+        <div class="chaos-level" id="chaosLevel"></div>
+    </div>
+
+    <div class="data-source-indicator" id="dataSource">
+        📊 Manual Mode
+    </div>
+
+    <div class="camera-preview" id="cameraPreview">
+        <video id="cameraPreviewVideo"></video>
+        <div class="camera-preview-label">Camera Preview</div>
+    </div>
+
+    <script>
+        let discs = [];
+        let animationSpeed = 1;
+        let controlsVisible = true;
+        let apiConnected = false;
+        let apiUpdateInterval;
+        let lastApiUpdate = null;
+        
+        // Webcam variables
+        let videoStream = null;
+        let videoElement = null;
+        let canvasElement = null;
+        let canvasContext = null;
+        let cameraActive = false;
+        let cameraData = null;
+        
+        // Silhouette detection variables
+        let silhouetteCanvas = null;
+        let silhouetteContext = null;
+        let backgroundFrame = null;
+        let silhouetteData = null;
+        let motionThreshold = 30; // Sensitivity for motion detection
+        
+        // Weather data state
+        let weatherData = {
+            temperature: 72,
+            humidity: 45,
+            pressure: 30.12,
+            windSpeed: 5,
+            solarRadiation: 400,
+            timeOfDay: 'auto'
+        };
+
+        // API configuration
+        let apiConfig = {
+            apiKey: '',
+            appKey: '',
+            macAddress: '',
+            baseUrl: 'https://rt.ambientweather.net/v1'
+        };
+
+        // Load saved credentials from localStorage
+        function loadSavedCredentials() {
+            try {
+                const savedApiKey = localStorage.getItem('ambientWeather_apiKey');
+                const savedAppKey = localStorage.getItem('ambientWeather_appKey');
+                const savedMacAddress = localStorage.getItem('ambientWeather_macAddress');
+                
+                if (savedApiKey) {
+                    document.getElementById('apiKey').value = savedApiKey;
+                    apiConfig.apiKey = savedApiKey;
+                }
+                
+                if (savedAppKey) {
+                    document.getElementById('appKey').value = savedAppKey;
+                    apiConfig.appKey = savedAppKey;
+                }
+                
+                if (savedMacAddress) {
+                    document.getElementById('macAddress').value = savedMacAddress;
+                    apiConfig.macAddress = savedMacAddress;
+                }
+                
+                // Update UI to show saved status
+                updateCredentialsStatus();
+            } catch (error) {
+                console.warn('Could not load saved credentials:', error);
+            }
+        }
+
+        // Save credentials to localStorage
+        function saveCredentialsToStorage(apiKey, appKey, macAddress) {
+            try {
+                localStorage.setItem('ambientWeather_apiKey', apiKey);
+                localStorage.setItem('ambientWeather_appKey', appKey);
+                if (macAddress) {
+                    localStorage.setItem('ambientWeather_macAddress', macAddress);
+                }
+                updateCredentialsStatus();
+            } catch (error) {
+                console.warn('Could not save credentials:', error);
+            }
+        }
+
+        // Clear saved credentials
+        function clearSavedCredentials() {
+            try {
+                localStorage.removeItem('ambientWeather_apiKey');
+                localStorage.removeItem('ambientWeather_appKey');
+                localStorage.removeItem('ambientWeather_macAddress');
+                
+                document.getElementById('apiKey').value = '';
+                document.getElementById('appKey').value = '';
+                document.getElementById('macAddress').value = '';
+                
+                apiConfig.apiKey = '';
+                apiConfig.appKey = '';
+                apiConfig.macAddress = '';
+                
+                updateCredentialsStatus();
+                updateStatus('', 'Disconnected');
+            } catch (error) {
+                console.warn('Could not clear saved credentials:', error);
+            }
+        }
+
+        // Update UI to show credentials status
+        function updateCredentialsStatus() {
+            const hasApiKey = localStorage.getItem('ambientWeather_apiKey');
+            const hasAppKey = localStorage.getItem('ambientWeather_appKey');
+            const hasMacAddress = localStorage.getItem('ambientWeather_macAddress');
+            
+            const statusElement = document.getElementById('credentialsStatus');
+            if (statusElement) {
+                if (hasApiKey && hasAppKey) {
+                    statusElement.textContent = '✅ Credentials saved';
+                    statusElement.style.color = '#4CAF50';
+                } else {
+                    statusElement.textContent = '⚠️ No saved credentials';
+                    statusElement.style.color = '#ff9800';
+                }
+            }
+        }
+
+        // Initialize the grid
+        function initializeGrid() {
+            const container = document.getElementById('container');
+            const containerWidth = window.innerWidth;
+            const containerHeight = window.innerHeight;
+            const discSize = window.innerWidth < 768 ? 21 : 31; // Half the original size
+            
+            const cols = Math.floor(containerWidth / discSize);
+            const rows = Math.floor(containerHeight / discSize);
+            
+            container.innerHTML = '';
+            discs = [];
+            
+            container.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            container.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+            
+            for (let i = 0; i < rows * cols; i++) {
+                const disc = document.createElement('div');
+                disc.className = 'disc';
+                disc.innerHTML = `
+                    <div class="disc-face disc-front"></div>
+                    <div class="disc-face disc-back"></div>
+                `;
+                
+                container.appendChild(disc);
+                
+                const row = Math.floor(i / cols);
+                const col = i % cols;
+                
+                discs.push({
+                    element: disc,
+                    flipped: Math.random() > 0.5,
+                    lastFlipTime: 0,
+                    flipProbability: Math.random(),
+                    row: row,
+                    col: col,
+                    totalRows: rows,
+                    totalCols: cols
+                });
+                
+                if (discs[i].flipped) {
+                    disc.classList.add('flipped');
+                }
+            }
+            
+            updateColors();
+        }
+
+        // Ambient Weather Network API Functions
+        async function connectToAWN() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const appKey = document.getElementById('appKey').value.trim();
+            const macAddress = document.getElementById('macAddress').value.trim();
+            const saveCredentials = document.getElementById('saveCredentials').checked;
+
+            if (!apiKey || !appKey) {
+                showError('Please enter both API Key and Application Key');
+                return;
+            }
+
+            apiConfig.apiKey = apiKey;
+            apiConfig.appKey = appKey;
+            apiConfig.macAddress = macAddress;
+
+            updateStatus('connecting', 'Connecting...');
+            hideError();
+
+            try {
+                const success = await fetchWeatherData();
+                if (success) {
+                    apiConnected = true;
+                    updateStatus('connected', 'Connected');
+                    updateDataSourceIndicator('🌦️ Live Weather Data');
+                    
+                    // Save credentials if user opted to do so
+                    if (saveCredentials) {
+                        saveCredentialsToStorage(apiKey, appKey, macAddress);
+                    }
+                    
+                    // Hide controls panel on successful connection
+                    controlsVisible = false;
+                    const controls = document.getElementById('controls');
+                    controls.classList.add('hidden');
+                    
+                    // Start periodic updates (every 5 minutes as per API rate limits)
+                    if (apiUpdateInterval) clearInterval(apiUpdateInterval);
+                    apiUpdateInterval = setInterval(fetchWeatherData, 5 * 60 * 1000);
+                    
+                    // Disable manual controls when connected
+                    setManualControlsState(true);
+                } else {
+                    throw new Error('Failed to fetch weather data');
+                }
+            } catch (error) {
+                console.error('API connection failed:', error);
+                updateStatus('error', 'Connection Failed');
+                showError('Unable to connect to weather station. Please check your credentials and try again.');
+                apiConnected = false;
+            }
+        }
+
+        async function fetchWeatherData() {
+            try {
+                let url = `${apiConfig.baseUrl}/devices?apiKey=${apiConfig.apiKey}&applicationKey=${apiConfig.appKey}`;
+                
+                if (apiConfig.macAddress) {
+                    url += `&macAddress=${apiConfig.macAddress}`;
+                }
+
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                
+                if (!data || data.length === 0) {
+                    throw new Error('No weather stations found');
+                }
+
+                // Use the first (or specified) weather station
+                const station = data[0];
+                const lastData = station.lastData;
+
+                if (!lastData) {
+                    throw new Error('No recent data available');
+                }
+
+                // Map AWN data to our weather data structure
+                updateWeatherFromAPI(lastData);
+                lastApiUpdate = new Date();
+                
+                return true;
+            } catch (error) {
+                console.error('Weather data fetch failed:', error);
+                showError(`API Error: ${error.message}`);
+                return false;
+            }
+        }
+
+        function updateWeatherFromAPI(data) {
+            // Map Ambient Weather data fields to our internal structure
+            if (data.tempf !== undefined) {
+                weatherData.temperature = parseFloat(data.tempf);
+                document.getElementById('temperature').value = Math.round(weatherData.temperature);
+            }
+            
+            if (data.humidity !== undefined) {
+                weatherData.humidity = parseFloat(data.humidity);
+                document.getElementById('humidity').value = Math.round(weatherData.humidity);
+            }
+            
+            if (data.baromrelin !== undefined) {
+                weatherData.pressure = parseFloat(data.baromrelin);
+                document.getElementById('pressure').value = weatherData.pressure.toFixed(2);
+            } else if (data.baromabsin !== undefined) {
+                weatherData.pressure = parseFloat(data.baromabsin);
+                document.getElementById('pressure').value = weatherData.pressure.toFixed(2);
+            }
+            
+            if (data.windspeedmph !== undefined) {
+                weatherData.windSpeed = parseFloat(data.windspeedmph);
+                document.getElementById('windSpeed').value = Math.round(weatherData.windSpeed);
+            }
+            
+            if (data.solarradiation !== undefined) {
+                weatherData.solarRadiation = parseFloat(data.solarradiation);
+                document.getElementById('solarRadiation').value = Math.round(weatherData.solarRadiation);
+            }
+
+            // Update displays
+            updateWeatherDisplay();
+            updateColors();
+            
+            // Update last update time
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+            
+            // Make weather values appear "live"
+            document.querySelectorAll('.weather-value').forEach(el => {
+                el.classList.add('live');
+            });
+        }
+
+        function disconnectFromAWN() {
+            apiConnected = false;
+            if (apiUpdateInterval) {
+                clearInterval(apiUpdateInterval);
+                apiUpdateInterval = null;
+            }
+            
+            updateStatus('', 'Disconnected');
+            updateDataSourceIndicator('📊 Manual Mode');
+            hideError();
+            
+            // Show controls panel when disconnecting
+            controlsVisible = true;
+            const controls = document.getElementById('controls');
+            controls.classList.remove('hidden');
+            
+            // Re-enable manual controls
+            setManualControlsState(false);
+            
+            // Remove live indicators
+            document.querySelectorAll('.weather-value').forEach(el => {
+                el.classList.remove('live');
+            });
+            
+            document.getElementById('lastUpdate').textContent = 'Manual';
+        }
+
+        function setManualControlsState(disabled) {
+            const controls = ['temperature', 'humidity', 'pressure', 'windSpeed', 'solarRadiation'];
+            controls.forEach(id => {
+                document.getElementById(id).disabled = disabled;
+                document.getElementById(id).style.opacity = disabled ? '0.5' : '1';
+            });
+        }
+
+        function updateStatus(status, text) {
+            const indicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            
+            indicator.className = `status-indicator ${status}`;
+            statusText.textContent = text;
+        }
+
+        function updateDataSourceIndicator(text) {
+            const cameraEnabled = document.getElementById('enableWebcam').checked;
+            const cameraActive = cameraEnabled && cameraData;
+            
+            let displayText = text;
+            if (cameraActive) {
+                displayText += ' + 📷 Camera';
+            }
+            
+            document.getElementById('dataSource').textContent = displayText;
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function hideError() {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+
+        // Calculate chaos level based on weather conditions
+        function calculateChaos() {
+            const tempChaos = Math.abs(weatherData.temperature - 70) / 50;
+            const humidChaos = Math.abs(weatherData.humidity - 50) / 50;
+            const pressureChaos = Math.abs(weatherData.pressure - 30.12) / 2;
+            const windChaos = weatherData.windSpeed / 50;
+            
+            return Math.min(1, (tempChaos + humidChaos + pressureChaos + windChaos) / 4);
+        }
+
+        // Get time-based colors (day/night cycle)
+        function getTimeBasedColors() {
+            let isDay = true;
+            
+            if (weatherData.timeOfDay === 'auto') {
+                const hour = new Date().getHours();
+                isDay = hour >= 6 && hour < 20;
+            } else {
+                isDay = weatherData.timeOfDay === 'day';
+            }
+            
+            return isDay;
+        }
+
+        // Get temperature-based color with expanded palette
+        function getTemperatureColor(temp, isDay, patternVariation = 0) {
+            const normalizedTemp = Math.max(0, Math.min(1, (temp + 20) / 140));
+            
+            let hue, saturation, lightness;
+            
+            // Enhanced color palette with more vibrant transitions
+            if (normalizedTemp < 0.1) {
+                // Deep blues for very cold
+                hue = 240 + (normalizedTemp * 60) + patternVariation;
+                saturation = 80 + (normalizedTemp * 20);
+                lightness = isDay ? 35 + (normalizedTemp * 25) : 20 + (normalizedTemp * 20);
+            } else if (normalizedTemp < 0.25) {
+                // Cool blues to teals
+                hue = 200 + (normalizedTemp * 80) + patternVariation;
+                saturation = 85 + (normalizedTemp * 15);
+                lightness = isDay ? 45 + (normalizedTemp * 25) : 30 + (normalizedTemp * 20);
+            } else if (normalizedTemp < 0.4) {
+                // Teals to greens
+                hue = 160 + (normalizedTemp * 60) + patternVariation;
+                saturation = 90 + (normalizedTemp * 10);
+                lightness = isDay ? 50 + (normalizedTemp * 25) : 35 + (normalizedTemp * 20);
+            } else if (normalizedTemp < 0.55) {
+                // Greens to yellows
+                hue = 120 + (normalizedTemp * 60) + patternVariation;
+                saturation = 85 + (normalizedTemp * 15);
+                lightness = isDay ? 55 + (normalizedTemp * 20) : 40 + (normalizedTemp * 15);
+            } else if (normalizedTemp < 0.7) {
+                // Yellows to oranges
+                hue = 60 + (normalizedTemp * 60) + patternVariation;
+                saturation = 90 + (normalizedTemp * 10);
+                lightness = isDay ? 60 + (normalizedTemp * 15) : 45 + (normalizedTemp * 15);
+            } else if (normalizedTemp < 0.85) {
+                // Oranges to reds
+                hue = 30 + (normalizedTemp * 40) + patternVariation;
+                saturation = 95 + (normalizedTemp * 5);
+                lightness = isDay ? 55 + (normalizedTemp * 15) : 40 + (normalizedTemp * 15);
+            } else {
+                // Deep reds to magentas for very hot
+                hue = 0 + (normalizedTemp * 40) + patternVariation;
+                saturation = 100;
+                lightness = isDay ? 50 + (normalizedTemp * 15) : 35 + (normalizedTemp * 15);
+            }
+            
+            hue = hue % 360;
+            
+            return `hsl(${Math.round(hue)}, ${Math.round(saturation)}%, ${Math.round(lightness)}%)`;
+        }
+
+        // Update disc colors based on weather with beautiful patterns
+        function updateColors() {
+            const isDay = getTimeBasedColors();
+            const temp = weatherData.temperature;
+            const solar = weatherData.solarRadiation;
+            const humidity = weatherData.humidity;
+            const pressure = weatherData.pressure;
+            const windSpeed = weatherData.windSpeed;
+            const chaos = calculateChaos();
+            
+            const solarFactor = solar / 1200;
+            const humidityFactor = humidity / 100;
+            const pressureFactor = (pressure - 28) / 4; // Normalize pressure range
+            
+            discs.forEach((disc, index) => {
+                const front = disc.element.querySelector('.disc-front');
+                const back = disc.element.querySelector('.disc-back');
+                
+                const row = disc.row;
+                const col = disc.col;
+                const totalRows = disc.totalRows;
+                const totalCols = disc.totalCols;
+                const time = Date.now() * 0.001;
+                
+                const normalizedRow = row / totalRows;
+                const normalizedCol = col / totalCols;
+                
+                // Enhanced pattern generation with more weather factors
+                const wavePattern = Math.sin(normalizedRow * 12 + time * 0.5) * Math.cos(normalizedCol * 12 + time * 0.3);
+                const spiralPattern = Math.sin(Math.sqrt(normalizedRow * normalizedRow + normalizedCol * normalizedCol) * 18 + time * 0.4);
+                const humidityPattern = Math.sin(normalizedRow * 10 + humidity * 0.15) * Math.cos(normalizedCol * 10 + humidity * 0.1);
+                const pressurePattern = Math.sin((normalizedRow + normalizedCol) * 15 + pressure * 3);
+                const windPattern = Math.sin(normalizedRow * windSpeed * 0.8 + time * windSpeed * 0.15);
+                const solarPattern = Math.sin(normalizedRow * solarFactor * 20 + time * 0.2) * Math.cos(normalizedCol * solarFactor * 20);
+                
+                const combinedPattern = (wavePattern + spiralPattern + humidityPattern + pressurePattern + windPattern + solarPattern) / 6;
+                
+                // Enhanced variation factors
+                const patternVariation = combinedPattern * 40 * chaos;
+                const tempVariation = combinedPattern * 20;
+                const brightnessVariation = 1 + (combinedPattern * 0.4);
+                
+                // Individual disc patterns for more variety
+                const frontPattern = Math.sin(index * 0.12 + time * 0.25) * 25;
+                const backPattern = Math.cos(index * 0.18 + time * 0.3) * 25;
+                
+                // Add humidity-based color shifts
+                const humidityShift = (humidity - 50) * 0.5;
+                
+                // Add pressure-based color intensity
+                const pressureIntensity = Math.max(0.5, Math.min(1.5, 1 + (pressure - 30.12) * 0.1));
+                
+                // Create base colors with enhanced variations
+                const frontColor = getTemperatureColor(
+                    temp + tempVariation + humidityShift + (Math.sin(time * 0.1 + index * 0.05) * 8), 
+                    isDay, 
+                    patternVariation + frontPattern
+                );
+                const backColor = getTemperatureColor(
+                    temp - tempVariation - humidityShift + (Math.cos(time * 0.12 + index * 0.07) * 8), 
+                    isDay, 
+                    patternVariation + backPattern
+                );
+                
+                // Enhanced brightness calculations
+                const frontBrightness = (isDay ? 1 + (solarFactor * 0.5) : 0.4 + (solarFactor * 0.4)) * brightnessVariation * pressureIntensity;
+                const backBrightness = (isDay ? 1 + (solarFactor * 0.4) : 0.3 + (solarFactor * 0.3)) * brightnessVariation * pressureIntensity;
+                
+                // Dynamic gradient angles based on wind and time
+                const gradientAngle = (combinedPattern * 180 + windSpeed * 15 + time * 8 + index * 0.1) % 360;
+                const frontGradientAngle = gradientAngle;
+                const backGradientAngle = (gradientAngle + 90 + windSpeed * 2) % 360;
+                
+                const frontColorBright = adjustBrightness(frontColor, frontBrightness);
+                const backColorBright = adjustBrightness(backColor, backBrightness);
+                
+                // Create secondary colors with more variation
+                const frontSecondary = getTemperatureColor(
+                    temp + tempVariation * 2 + humidityShift, 
+                    isDay, 
+                    patternVariation + frontPattern + 80
+                );
+                
+                const backSecondary = getTemperatureColor(
+                    temp - tempVariation * 2 - humidityShift, 
+                    isDay, 
+                    patternVariation + backPattern + 80
+                );
+                
+                const frontSecondaryBright = adjustBrightness(frontSecondary, frontBrightness * 0.7);
+                const backSecondaryBright = adjustBrightness(backSecondary, backBrightness * 0.7);
+                
+                // Get camera colors if enabled
+                const cameraBlendMode = document.getElementById('cameraBlendMode').value;
+                const cameraOpacity = parseFloat(document.getElementById('cameraOpacity').value);
+                
+                // Map disc position to camera coordinates for better distribution
+                const discX = (col + 0.5) / totalCols; // Center of each disc
+                const discY = (row + 0.5) / totalRows;
+                
+                // Add some variation based on time and disc index for more dynamic effect
+                const timeOffset = (time * 0.1 + index * 0.01) % 1;
+                const dynamicX = (discX + timeOffset * 0.1) % 1;
+                const dynamicY = (discY + Math.sin(time * 0.2 + index * 0.1) * 0.05) % 1;
+                
+                const frontCameraColor = getCameraColor(dynamicX, dynamicY);
+                const backCameraColor = getCameraColor(1 - dynamicX, 1 - dynamicY);
+                
+                // Get silhouette data
+                const silhouetteValue = getSilhouetteAt(dynamicX, dynamicY);
+                
+                // Blend weather and camera colors
+                let finalFrontColor, finalBackColor, finalFrontSecondary, finalBackSecondary;
+                
+                if (cameraBlendMode === 'silhouette' && silhouetteData) {
+                    // Silhouette mode - use silhouette as negative space
+                    const silhouetteInfluence = silhouetteValue * cameraOpacity;
+                    
+                    if (silhouetteInfluence > 0.3) {
+                        // This disc is part of the silhouette - make it dark/transparent
+                        finalFrontColor = `rgba(0, 0, 0, ${silhouetteInfluence})`;
+                        finalBackColor = `rgba(0, 0, 0, ${silhouetteInfluence})`;
+                        finalFrontSecondary = `rgba(0, 0, 0, ${silhouetteInfluence * 0.8})`;
+                        finalBackSecondary = `rgba(0, 0, 0, ${silhouetteInfluence * 0.8})`;
+                    } else {
+                        // This disc is not part of silhouette - use weather colors
+                        finalFrontColor = frontColorBright;
+                        finalBackColor = backColorBright;
+                        finalFrontSecondary = frontSecondaryBright;
+                        finalBackSecondary = backSecondaryBright;
+                    }
+                } else if (cameraBlendMode === 'replace' && frontCameraColor) {
+                    // Pure camera mode - use camera colors directly
+                    finalFrontColor = frontCameraColor;
+                    finalBackColor = backCameraColor || frontCameraColor;
+                    finalFrontSecondary = adjustBrightness(frontCameraColor, 0.7);
+                    finalBackSecondary = adjustBrightness(backCameraColor || frontCameraColor, 0.7);
+                } else if (cameraBlendMode === 'mosaic' && frontCameraColor) {
+                    // Mosaic mode - pure camera feed, each disc is a pixel section
+                    finalFrontColor = frontCameraColor;
+                    finalBackColor = backCameraColor || frontCameraColor;
+                    finalFrontSecondary = adjustBrightness(frontCameraColor, 0.6);
+                    finalBackSecondary = adjustBrightness(backCameraColor || frontCameraColor, 0.6);
+                } else if (cameraBlendMode === 'overlay' && frontCameraColor) {
+                    // Overlay mode - blend camera with weather
+                    finalFrontColor = `linear-gradient(45deg, ${frontColorBright}, ${frontCameraColor})`;
+                    finalBackColor = `linear-gradient(45deg, ${backColorBright}, ${backCameraColor || frontCameraColor})`;
+                    finalFrontSecondary = `linear-gradient(45deg, ${frontSecondaryBright}, ${adjustBrightness(frontCameraColor, 0.6)})`;
+                    finalBackSecondary = `linear-gradient(45deg, ${backSecondaryBright}, ${adjustBrightness(backCameraColor || frontCameraColor, 0.6)})`;
+                } else if (cameraBlendMode === 'mix' && frontCameraColor) {
+                    // Mix mode - blend colors with opacity
+                    finalFrontColor = frontCameraColor;
+                    finalBackColor = backCameraColor || frontCameraColor;
+                    finalFrontSecondary = adjustBrightness(frontCameraColor, 0.8);
+                    finalBackSecondary = adjustBrightness(backCameraColor || frontCameraColor, 0.8);
+                } else {
+                    // No camera or disabled - use weather colors only
+                    finalFrontColor = frontColorBright;
+                    finalBackColor = backColorBright;
+                    finalFrontSecondary = frontSecondaryBright;
+                    finalBackSecondary = backSecondaryBright;
+                }
+                
+                // Create simple 2-color gradients
+                front.style.background = `linear-gradient(${frontGradientAngle}deg, ${finalFrontColor}, ${finalFrontSecondary})`;
+                back.style.background = `linear-gradient(${backGradientAngle}deg, ${finalBackColor}, ${finalBackSecondary})`;
+            });
+            
+            // Update chaos indicator
+            const chaosLevel = document.getElementById('chaosLevel');
+            const chaosPercentage = Math.round(chaos * 100);
+            chaosLevel.style.height = `${chaos * 100}%`;
+            document.getElementById('chaosDisplay').textContent = `${chaosPercentage}%`;
+            
+            // Update background based on weather conditions
+            updateBackground();
+        }
+
+        // Helper function to adjust color brightness
+        function adjustBrightness(color, factor) {
+            // Simple brightness adjustment for HSL colors
+            if (color.startsWith('hsl')) {
+                const match = color.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+                if (match) {
+                    const [, h, s, l] = match;
+                    const newLightness = Math.max(0, Math.min(100, parseFloat(l) * factor));
+                    return `hsl(${h}, ${s}%, ${Math.round(newLightness)}%)`;
+                }
+            }
+            return color;
+        }
+
+        // Update weather display
+        function updateWeatherDisplay() {
+            document.getElementById('tempDisplay').textContent = `${Math.round(weatherData.temperature)}°F`;
+            document.getElementById('humidityDisplay').textContent = `${Math.round(weatherData.humidity)}%`;
+            document.getElementById('pressureDisplay').textContent = `${weatherData.pressure.toFixed(2)}"`;
+            document.getElementById('windDisplay').textContent = `${Math.round(weatherData.windSpeed)} mph`;
+            document.getElementById('solarDisplay').textContent = `${Math.round(weatherData.solarRadiation)} W/m²`;
+        }
+
+        // Manual control event handlers
+        function updateManualWeather() {
+            weatherData.temperature = parseFloat(document.getElementById('temperature').value);
+            weatherData.humidity = parseFloat(document.getElementById('humidity').value);
+            weatherData.pressure = parseFloat(document.getElementById('pressure').value);
+            weatherData.windSpeed = parseFloat(document.getElementById('windSpeed').value);
+            weatherData.solarRadiation = parseFloat(document.getElementById('solarRadiation').value);
+            weatherData.timeOfDay = document.getElementById('timeOfDay').value;
+            
+            updateWeatherDisplay();
+            updateColors();
+            
+            if (!apiConnected) {
+                document.getElementById('lastUpdate').textContent = 'Manual';
+            }
+        }
+
+        // Animation controls
+        function triggerRandomFlips() {
+            const flipCount = Math.floor(Math.random() * 10) + 5;
+            for (let i = 0; i < flipCount; i++) {
+                setTimeout(() => {
+                    const randomDisc = discs[Math.floor(Math.random() * discs.length)];
+                    flipDisc(randomDisc);
+                }, i * 100);
+            }
+        }
+
+        function resetAllDiscs() {
+            discs.forEach(disc => {
+                disc.flipped = false;
+                disc.element.classList.remove('flipped');
+            });
+        }
+
+        function flipDisc(disc) {
+            disc.flipped = !disc.flipped;
+            disc.element.classList.toggle('flipped', disc.flipped);
+            disc.lastFlipTime = Date.now();
+        }
+
+        // Animation speed control
+        function updateAnimationSpeed() {
+            animationSpeed = parseFloat(document.getElementById('animationSpeed').value);
+        }
+
+        // Toggle controls visibility
+        function toggleControls() {
+            controlsVisible = !controlsVisible;
+            const controls = document.getElementById('controls');
+            controls.classList.toggle('hidden', !controlsVisible);
+        }
+
+        // Animation loop
+        function animate() {
+            const time = Date.now() * 0.001 * animationSpeed;
+            const chaos = calculateChaos();
+            
+            discs.forEach((disc, index) => {
+                const timeSinceLastFlip = Date.now() - disc.lastFlipTime;
+                const baseProbability = 0.005 * animationSpeed;
+                const chaosMultiplier = 1 + (chaos * 3);
+                const windMultiplier = 1 + (weatherData.windSpeed * 0.02);
+                const pressureMultiplier = 1 + Math.abs(weatherData.pressure - 30.12) * 0.2;
+                
+                const flipProbability = baseProbability * chaosMultiplier * windMultiplier * pressureMultiplier;
+                
+                if (Math.random() < flipProbability && timeSinceLastFlip > 500) {
+                    flipDisc(disc);
+                }
+            });
+            
+            updateColors();
+            requestAnimationFrame(animate);
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeGrid();
+            
+            // Load saved credentials
+            loadSavedCredentials();
+            
+            // Add event listeners for manual controls
+            document.getElementById('temperature').addEventListener('input', updateManualWeather);
+            document.getElementById('humidity').addEventListener('input', updateManualWeather);
+            document.getElementById('pressure').addEventListener('input', updateManualWeather);
+            document.getElementById('windSpeed').addEventListener('input', updateManualWeather);
+            document.getElementById('solarRadiation').addEventListener('input', updateManualWeather);
+            document.getElementById('timeOfDay').addEventListener('change', updateManualWeather);
+            document.getElementById('animationSpeed').addEventListener('input', updateAnimationSpeed);
+            
+            // Add camera control event listeners
+            document.getElementById('enableWebcam').addEventListener('change', function() {
+                if (!this.checked && cameraActive) {
+                    stopCamera();
+                }
+            });
+            
+            document.getElementById('cameraBlendMode').addEventListener('change', updateColors);
+            document.getElementById('cameraOpacity').addEventListener('input', updateColors);
+            document.getElementById('cameraScale').addEventListener('input', updateColors);
+            document.getElementById('motionThreshold').addEventListener('input', function() {
+                motionThreshold = parseInt(this.value);
+            });
+            
+            // Add click handlers for discs
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('disc')) {
+                    const discIndex = Array.from(e.target.parentNode.children).indexOf(e.target);
+                    if (discIndex >= 0 && discIndex < discs.length) {
+                        flipDisc(discs[discIndex]);
+                    }
+                }
+            });
+            
+            // Start animation
+            animate();
+            
+            // Initial update
+            updateWeatherDisplay();
+            updateColors();
+            
+            // Auto-start camera after a short delay
+            setTimeout(() => {
+                if (document.getElementById('enableWebcam').checked) {
+                    console.log('Auto-starting camera...');
+                    updateCameraStatus('🔄 Auto-starting camera...');
+                    startCamera();
+                }
+            }, 2000);
+            
+            // Show camera setup help
+            console.log('🌤️ Weather Art Installation loaded!');
+            console.log('📷 To use camera features:');
+            console.log('   1. Click "Check Camera Support" to verify setup');
+            console.log('   2. Click "Start Camera" to begin');
+            console.log('   3. Check "Enable Webcam" to see camera on discs');
+            console.log('   4. Use "Test Silhouette Effect" to see silhouette preview');
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            initializeGrid();
+        });
+
+        // Update background based on weather conditions
+        function updateBackground() {
+            const temp = weatherData.temperature;
+            const humidity = weatherData.humidity;
+            const solar = weatherData.solarRadiation;
+            const isDay = getTimeBasedColors();
+            
+            const normalizedTemp = Math.max(0, Math.min(1, (temp + 20) / 140));
+            const solarFactor = solar / 1200;
+            
+            let bgColor1, bgColor2, bgColor3;
+            
+            if (isDay) {
+                if (normalizedTemp < 0.3) {
+                    // Cold day - cool blues
+                    bgColor1 = `rgba(100, 150, 255, ${0.1 + solarFactor * 0.2})`;
+                    bgColor2 = `rgba(50, 100, 200, ${0.05 + solarFactor * 0.1})`;
+                    bgColor3 = `rgba(0, 0, 0, 1)`;
+                } else if (normalizedTemp < 0.6) {
+                    // Mild day - warm tones
+                    bgColor1 = `rgba(255, 200, 100, ${0.15 + solarFactor * 0.25})`;
+                    bgColor2 = `rgba(200, 150, 50, ${0.08 + solarFactor * 0.15})`;
+                    bgColor3 = `rgba(0, 0, 0, 1)`;
+                } else {
+                    // Hot day - warm reds
+                    bgColor1 = `rgba(255, 150, 100, ${0.2 + solarFactor * 0.3})`;
+                    bgColor2 = `rgba(200, 100, 50, ${0.1 + solarFactor * 0.2})`;
+                    bgColor3 = `rgba(0, 0, 0, 1)`;
+                }
+            } else {
+                // Night - cooler, darker tones
+                if (normalizedTemp < 0.3) {
+                    bgColor1 = `rgba(50, 100, 200, ${0.05 + solarFactor * 0.1})`;
+                    bgColor2 = `rgba(25, 50, 100, ${0.03 + solarFactor * 0.05})`;
+                    bgColor3 = `rgba(0, 0, 0, 1)`;
+                } else {
+                    bgColor1 = `rgba(100, 50, 150, ${0.08 + solarFactor * 0.15})`;
+                    bgColor2 = `rgba(50, 25, 75, ${0.05 + solarFactor * 0.1})`;
+                    bgColor3 = `rgba(0, 0, 0, 1)`;
+                }
+            }
+            
+            // Add humidity-based atmospheric effect
+            const humidityEffect = humidity > 70 ? `rgba(200, 200, 255, ${0.05 + (humidity - 70) * 0.002})` : 'transparent';
+            
+            document.body.style.background = `
+                radial-gradient(circle at center, ${bgColor1} 0%, ${bgColor2} 50%, ${bgColor3} 100%),
+                radial-gradient(circle at 30% 30%, ${humidityEffect} 0%, transparent 50%),
+                radial-gradient(circle at 70% 70%, ${humidityEffect} 0%, transparent 50%)
+            `;
+        }
+
+        // Webcam functions
+        async function startCamera() {
+            try {
+                console.log('Requesting camera access...');
+                updateCameraStatus('🔍 Requesting camera permission...');
+                
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: 640, 
+                        height: 480,
+                        facingMode: 'environment' // Use back camera if available
+                    } 
+                });
+                
+                console.log('Camera access granted!', stream);
+                videoStream = stream;
+                
+                // Create hidden video element for processing
+                if (!videoElement) {
+                    videoElement = document.createElement('video');
+                    videoElement.style.display = 'none';
+                    videoElement.autoplay = true;
+                    videoElement.muted = true;
+                    videoElement.playsInline = true;
+                    document.body.appendChild(videoElement);
+                }
+                
+                // Create visible preview video
+                const previewVideo = document.getElementById('cameraPreviewVideo');
+                if (previewVideo) {
+                    previewVideo.srcObject = stream;
+                    previewVideo.autoplay = true;
+                    previewVideo.muted = true;
+                    previewVideo.playsInline = true;
+                }
+                
+                // Show camera preview
+                const cameraPreview = document.getElementById('cameraPreview');
+                if (cameraPreview) {
+                    cameraPreview.classList.add('active');
+                }
+                
+                // Create canvas for processing
+                if (!canvasElement) {
+                    canvasElement = document.createElement('canvas');
+                    canvasElement.width = 640;
+                    canvasElement.height = 480;
+                    canvasContext = canvasElement.getContext('2d');
+                    document.body.appendChild(canvasElement);
+                }
+                
+                videoElement.srcObject = stream;
+                cameraActive = true;
+                
+                updateCameraStatus('📹 Camera active - Check preview window');
+                
+                // Start processing camera frames
+                processCameraFrame();
+                
+            } catch (error) {
+                console.error('Error accessing camera:', error);
+                let errorMessage = '❌ Camera access denied';
+                
+                if (error.name === 'NotAllowedError') {
+                    errorMessage += ' - Permission denied by user';
+                } else if (error.name === 'NotFoundError') {
+                    errorMessage += ' - No camera found';
+                } else if (error.name === 'NotSupportedError') {
+                    errorMessage += ' - Camera not supported';
+                } else if (error.name === 'NotReadableError') {
+                    errorMessage += ' - Camera in use by another app';
+                } else {
+                    errorMessage += ` - ${error.message}`;
+                }
+                
+                updateCameraStatus(errorMessage);
+                alert(`Camera Error: ${errorMessage}\n\nPlease check:\n1. Browser permissions\n2. Camera availability\n3. Other apps using camera`);
+            }
+        }
+
+        function stopCamera() {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+            
+            if (videoElement) {
+                videoElement.srcObject = null;
+            }
+            
+            // Hide camera preview
+            const cameraPreview = document.getElementById('cameraPreview');
+            if (cameraPreview) {
+                cameraPreview.classList.remove('active');
+            }
+            
+            const previewVideo = document.getElementById('cameraPreviewVideo');
+            if (previewVideo) {
+                previewVideo.srcObject = null;
+            }
+            
+            cameraActive = false;
+            cameraData = null;
+            updateCameraStatus('📷 Camera stopped');
+        }
+
+        function processCameraFrame() {
+            if (!cameraActive || !videoElement || !canvasContext) return;
+            
+            try {
+                // Draw video frame to canvas
+                canvasContext.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+                
+                // Get image data for processing
+                cameraData = canvasContext.getImageData(0, 0, canvasElement.width, canvasElement.height);
+                
+                // Process silhouette detection
+                processSilhouette();
+                
+                // Continue processing frames
+                requestAnimationFrame(processCameraFrame);
+            } catch (error) {
+                console.error('Error processing camera frame:', error);
+            }
+        }
+
+        function processSilhouette() {
+            if (!cameraData) return;
+            
+            // Create silhouette canvas if it doesn't exist
+            if (!silhouetteCanvas) {
+                silhouetteCanvas = document.createElement('canvas');
+                silhouetteCanvas.width = cameraData.width;
+                silhouetteCanvas.height = cameraData.height;
+                silhouetteContext = silhouetteCanvas.getContext('2d');
+                document.body.appendChild(silhouetteCanvas);
+            }
+            
+            // Capture current frame
+            const currentFrame = new ImageData(
+                new Uint8ClampedArray(cameraData.data),
+                cameraData.width,
+                cameraData.height
+            );
+            
+            // Initialize background frame if it doesn't exist
+            if (!backgroundFrame) {
+                backgroundFrame = new ImageData(
+                    new Uint8ClampedArray(cameraData.data),
+                    cameraData.width,
+                    cameraData.height
+                );
+                return;
+            }
+            
+            // Create silhouette by comparing current frame with background
+            const silhouetteImageData = new ImageData(cameraData.width, cameraData.height);
+            
+            for (let i = 0; i < currentFrame.data.length; i += 4) {
+                const r1 = currentFrame.data[i];
+                const g1 = currentFrame.data[i + 1];
+                const b1 = currentFrame.data[i + 2];
+                
+                const r2 = backgroundFrame.data[i];
+                const g2 = backgroundFrame.data[i + 1];
+                const b2 = backgroundFrame.data[i + 2];
+                
+                // Calculate difference between current and background
+                const diff = Math.abs(r1 - r2) + Math.abs(g1 - g2) + Math.abs(b1 - b2);
+                
+                if (diff > motionThreshold) {
+                    // Motion detected - this is part of the silhouette
+                    silhouetteImageData.data[i] = 255;     // White silhouette
+                    silhouetteImageData.data[i + 1] = 255;
+                    silhouetteImageData.data[i + 2] = 255;
+                    silhouetteImageData.data[i + 3] = 255;
+                } else {
+                    // No motion - transparent background
+                    silhouetteImageData.data[i] = 0;
+                    silhouetteImageData.data[i + 1] = 0;
+                    silhouetteImageData.data[i + 2] = 0;
+                    silhouetteImageData.data[i + 3] = 0;
+                }
+            }
+            
+            // Apply some smoothing to reduce noise
+            silhouetteData = smoothSilhouette(silhouetteImageData);
+            
+            // Update background frame gradually (adaptive background)
+            for (let i = 0; i < backgroundFrame.data.length; i += 4) {
+                backgroundFrame.data[i] = backgroundFrame.data[i] * 0.99 + currentFrame.data[i] * 0.01;
+                backgroundFrame.data[i + 1] = backgroundFrame.data[i + 1] * 0.99 + currentFrame.data[i + 1] * 0.01;
+                backgroundFrame.data[i + 2] = backgroundFrame.data[i + 2] * 0.99 + currentFrame.data[i + 2] * 0.01;
+            }
+        }
+
+        function smoothSilhouette(imageData) {
+            // Simple smoothing to reduce noise
+            const smoothed = new ImageData(imageData.width, imageData.height);
+            const radius = 2;
+            
+            for (let y = radius; y < imageData.height - radius; y++) {
+                for (let x = radius; x < imageData.width - radius; x++) {
+                    let sum = 0;
+                    let count = 0;
+                    
+                    // Average surrounding pixels
+                    for (let dy = -radius; dy <= radius; dy++) {
+                        for (let dx = -radius; dx <= radius; dx++) {
+                            const index = ((y + dy) * imageData.width + (x + dx)) * 4;
+                            sum += imageData.data[index];
+                            count++;
+                        }
+                    }
+                    
+                    const avg = sum / count;
+                    const index = (y * imageData.width + x) * 4;
+                    
+                    // Apply threshold to create cleaner silhouette
+                    const threshold = 128;
+                    const value = avg > threshold ? 255 : 0;
+                    
+                    smoothed.data[index] = value;
+                    smoothed.data[index + 1] = value;
+                    smoothed.data[index + 2] = value;
+                    smoothed.data[index + 3] = value;
+                }
+            }
+            
+            return smoothed;
+        }
+
+        function getSilhouetteAt(x, y) {
+            if (!silhouetteData) return 0;
+            
+            const scale = parseFloat(document.getElementById('cameraScale').value);
+            const cameraX = Math.floor(x * silhouetteData.width * scale) % silhouetteData.width;
+            const cameraY = Math.floor(y * silhouetteData.height * scale) % silhouetteData.height;
+            
+            const safeX = Math.max(0, Math.min(silhouetteData.width - 1, cameraX));
+            const safeY = Math.max(0, Math.min(silhouetteData.height - 1, cameraY));
+            
+            const index = (safeY * silhouetteData.width + safeX) * 4;
+            return silhouetteData.data[index] / 255; // Returns 0-1
+        }
+
+        function getCameraColor(x, y) {
+            if (!cameraData || !document.getElementById('enableWebcam').checked) {
+                return null;
+            }
+            
+            const scale = parseFloat(document.getElementById('cameraScale').value);
+            
+            // Map disc position to camera coordinates
+            // Each disc shows a specific section of the camera feed
+            const cameraX = Math.floor(x * cameraData.width * scale) % cameraData.width;
+            const cameraY = Math.floor(y * cameraData.height * scale) % cameraData.height;
+            
+            // Ensure coordinates are within bounds
+            const safeX = Math.max(0, Math.min(cameraData.width - 1, cameraX));
+            const safeY = Math.max(0, Math.min(cameraData.height - 1, cameraY));
+            
+            const index = (safeY * cameraData.width + safeX) * 4;
+            const r = cameraData.data[index];
+            const g = cameraData.data[index + 1];
+            const b = cameraData.data[index + 2];
+            
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+
+        function updateCameraStatus(message) {
+            const statusElement = document.getElementById('cameraStatus');
+            if (statusElement) {
+                statusElement.textContent = message;
+                statusElement.style.color = message.includes('active') ? '#4CAF50' : 
+                                          message.includes('denied') ? '#f44336' : '#ff9800';
+            }
+        }
+
+        function blendColors(weatherColor, cameraColor, blendMode, opacity) {
+            if (!cameraColor) return weatherColor;
+            
+            switch (blendMode) {
+                case 'overlay':
+                    return `linear-gradient(45deg, ${weatherColor}, ${cameraColor})`;
+                case 'replace':
+                    return cameraColor;
+                case 'mix':
+                    // Simple color mixing
+                    return `rgba(${cameraColor}, ${opacity})`;
+                default:
+                    return weatherColor;
+            }
+        }
+
+        function testCameraEffect() {
+            if (!cameraActive) {
+                alert('Please start the camera first!');
+                return;
+            }
+            
+            // Temporarily switch to silhouette mode for best effect demonstration
+            const originalBlendMode = document.getElementById('cameraBlendMode').value;
+            const originalOpacity = document.getElementById('cameraOpacity').value;
+            
+            document.getElementById('cameraBlendMode').value = 'silhouette';
+            document.getElementById('cameraOpacity').value = '1';
+            document.getElementById('enableWebcam').checked = true;
+            
+            updateColors();
+            
+            // Restore original settings after 5 seconds
+            setTimeout(() => {
+                document.getElementById('cameraBlendMode').value = originalBlendMode;
+                document.getElementById('cameraOpacity').value = originalOpacity;
+                updateColors();
+            }, 5000);
+            
+            updateCameraStatus('👤 Silhouette mode - 5 seconds');
+        }
+
+        function checkCameraSupport() {
+            console.log('Checking camera support...');
+            
+            // Check if getUserMedia is supported
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert('❌ Camera not supported in this browser!\n\nThis browser does not support camera access.');
+                return;
+            }
+            
+            // Check if we're on HTTPS (required for camera access)
+            if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+                alert('⚠️ Camera requires HTTPS!\n\nCamera access requires a secure connection (HTTPS) or localhost.\n\nCurrent protocol: ' + location.protocol);
+                return;
+            }
+            
+            // Check available devices
+            navigator.mediaDevices.enumerateDevices()
+                .then(devices => {
+                    const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                    console.log('Available video devices:', videoDevices);
+                    
+                    let message = `✅ Camera support detected!\n\n`;
+                    message += `📱 Available cameras: ${videoDevices.length}\n`;
+                    message += `🌐 Protocol: ${location.protocol}\n`;
+                    message += `🔒 Secure: ${location.protocol === 'https:' ? 'Yes' : 'No (but localhost is OK)'}\n\n`;
+                    
+                    if (videoDevices.length === 0) {
+                        message += '❌ No cameras found on this device.';
+                    } else {
+                        message += '✅ Ready to request camera access!\n\nClick "Start Camera" to begin.';
+                    }
+                    
+                    alert(message);
+                })
+                .catch(error => {
+                    console.error('Error enumerating devices:', error);
+                    alert('❌ Error checking camera devices:\n' + error.message);
+                });
+        }
+
+        // Hide all controls
+        function hideAllControls() {
+            controlsVisible = false;
+            const controls = document.getElementById('controls');
+            controls.classList.add('hidden');
+        }
+
+        function toggleSilhouettePreview() {
+            if (!silhouetteCanvas) {
+                alert('Please start the camera first!');
+                return;
+            }
+            
+            const cameraPreview = document.getElementById('cameraPreview');
+            const previewVideo = document.getElementById('cameraPreviewVideo');
+            
+            if (cameraPreview && previewVideo) {
+                if (previewVideo.srcObject) {
+                    // Switch to silhouette preview
+                    previewVideo.style.display = 'none';
+                    silhouetteCanvas.style.display = 'block';
+                    silhouetteCanvas.style.position = 'fixed';
+                    silhouetteCanvas.style.top = '20px';
+                    silhouetteCanvas.style.left = '20px';
+                    silhouetteCanvas.style.width = '160px';
+                    silhouetteCanvas.style.height = '120px';
+                    silhouetteCanvas.style.zIndex = '1000';
+                    silhouetteCanvas.style.border = '2px solid rgba(255, 255, 255, 0.3)';
+                    silhouetteCanvas.style.borderRadius = '8px';
+                    
+                    // Update the label
+                    const label = cameraPreview.querySelector('.camera-preview-label');
+                    if (label) {
+                        label.textContent = 'Silhouette Preview';
+                    }
+                } else {
+                    // Switch back to camera preview
+                    previewVideo.style.display = 'block';
+                    silhouetteCanvas.style.display = 'none';
+                    
+                    // Update the label
+                    const label = cameraPreview.querySelector('.camera-preview-label');
+                    if (label) {
+                        label.textContent = 'Camera Preview';
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
